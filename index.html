@@ -24,7 +24,284 @@
 
 <div id="secret-content" style="display: none; padding: 20px; border: 2px dashed #27ae60; background: #f1fcf4; border-radius: 10px; margin-top: 20px; text-align: center;">
     <h3 style="color: #27ae60;">🔓 Access Granted!</h3>
-    <p>This is your hidden content.</p>
+
+<div id="equipment-info" class="mb-4 text-center"></div>
+
+  <form id="equipment-form" class="space-y-4">
+
+    <div>
+      <label class="block font-medium">Date & Time of Check</label>
+      <input type="datetime-local" id="dateTime" required class="mt-1 w-full border rounded-lg p-2" max="">
+    </div>
+
+    <div>
+      <label class="block font-medium">Session</label>
+      <select id="session" required class="choices mt-1 w-full border rounded-lg p-2">
+        <option value="">Select...</option>
+        <option value="morning">Morning</option>
+        <option value="evening">Evening</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block font-medium">Electricity Status</label>
+      <select id="electricityStatus" required class="choices mt-1 w-full border rounded-lg p-2">
+        <option value="">Select...</option>
+        <option value="running">Running</option>
+        <option value="off">Off</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block font-medium">Temperature (°C)</label>
+      <input type="number" step="0.1" id="temperature" required class="mt-1 w-full border rounded-lg p-2">
+    </div>
+
+    <div>
+      <label class="block font-medium">Checked By</label>
+      <select id="checkedBy" required class="choices mt-1 w-full border rounded-lg p-2"></select>
+    </div>
+
+    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg shadow-md">
+      Next
+    </button>
+  </form>
+</div>
+
+<div id="done" class="hidden mt-6 text-center">
+  <h3 class="text-lg font-medium">All equipment processed!</h3>
+  <button id="restartBtn" class="mt-4 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">Restart</button>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-lg p-6 max-w-lg w-full shadow-lg">
+    <h3 class="text-xl font-semibold mb-4 text-center">Submitted Equipment</h3>
+    <div id="submittedEquipmentList" class="grid grid-cols-3 gap-4 max-h-64 overflow-auto mb-6"></div>
+    <div class="text-center">
+      <button id="confirmBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwltkQI_ljrd68ODKIMJrPca2cDEhTdtdDHZNm70i088yrnbXFGhoHt-LhNdcfNuxbVbg/exec';
+  const selectedFacility = 'SHAH-IPD'; // mapped to Sh. Komandoo HC
+
+  let equipmentList = [];
+  let currentIndex = 0;
+  let formCompleted = false;
+  let submittedEquipment = [];
+  let choicesInstances = {};
+
+  // -----------------------------
+  // UTILITY FUNCTIONS
+  // -----------------------------
+  const toggleVisibility = (id, show) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('hidden', !show);
+  };
+
+  const getMaldivesLocalDateTime = () => {
+    const offsetMinutes = 5 * 60;
+    const nowUtc = new Date();
+    const localTime = new Date(nowUtc.getTime() + offsetMinutes * 60000);
+    const pad = n => String(n).padStart(2, '0');
+    return `${localTime.getUTCFullYear()}-${pad(localTime.getUTCMonth()+1)}-${pad(localTime.getUTCDate())}T${pad(localTime.getUTCHours())}:${pad(localTime.getUTCMinutes())}`;
+  };
+
+  const setSessionBasedOnTime = dateTime => {
+    if (!dateTime) return;
+    const hour = parseInt(dateTime.split('T')[1].split(':')[0], 10);
+    const sessionSelect = document.getElementById('session');
+    sessionSelect.value = hour >=6 && hour <13 ? 'morning' :
+                          hour >=18 && hour <24 ? 'evening' : '';
+  };
+
+  const setCurrentDateTime = () => {
+    const dtInput = document.getElementById('dateTime');
+    const localTime = getMaldivesLocalDateTime();
+    dtInput.value = localTime;
+    dtInput.max = localTime;
+    setSessionBasedOnTime(localTime);
+  };
+
+  // -----------------------------
+  // FETCH STAFF LIST
+  // -----------------------------
+const fetchStaffList = async () => {
+  const STAFF_API_URL =
+    "https://script.google.com/macros/s/AKfycbyaBLAkJtS1lH0uJXZxmpLoHwb6kM51lQWyMuLlvDGXIdfovZhl8ag3MnMDL_aeq-oGmA/exec";
+
+  const staffSelect = document.getElementById("checkedBy");
+  staffSelect.innerHTML = "";
+
+  try {
+    // Only one needed (because facility is fixed)
+    const hcfName = "SHAH-IPD";
+
+    const res = await fetch(STAFF_API_URL);
+    const data = await res.json();
+
+    const filtered = data.filter(staff => staff.Hcf === hcfName);
+
+    if (filtered.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "no_staff";
+      opt.textContent = "No staff found. Please register manually.";
+      staffSelect.appendChild(opt);
+      initChoices();
+      return;
+    }
+
+    filtered.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item["Staff Name and Designation"];
+      opt.textContent = item["Staff Name and Designation"];
+      staffSelect.appendChild(opt);
+    });
+
+    const registerOpt = document.createElement("option");
+    registerOpt.value = "not_in_list";
+    registerOpt.textContent = "Not in list: Select to Register";
+    staffSelect.appendChild(registerOpt);
+
+    initChoices();
+
+    staffSelect.addEventListener("change", () => {
+      if (staffSelect.value === "not_in_list") {
+        const registerURL =
+          `https://shaviyanipublichealth.blogspot.com/p/register-new.html?hcf=${encodeURIComponent(selectedFacility)}`;
+
+        window.open(
+          registerURL,
+          "RegisterStaff",
+          "width=900,height=700,top=100,left=100,resizable=yes,scrollbars=yes"
+        );
+
+        staffSelect.choicesInstance?.setChoiceByValue("");
+      }
+    });
+
+  } catch (err) {
+    console.error("Failed to fetch staff", err);
+    alert("Could not load staff list");
+  }
+};
+
+  // -----------------------------
+  // FETCH EQUIPMENT LIST
+  // -----------------------------
+  const fetchEquipment = async () => {
+    try {
+      const res = await fetch(`${API_URL}?action=getEquipment&facility=${selectedFacility}`);
+      equipmentList = await res.json();
+      currentIndex = 0;
+      submittedEquipment = [];
+      if(equipmentList.length > 0) showEquipment(currentIndex);
+    } catch(err) {
+      console.error('Failed to fetch equipment', err);
+      alert('Could not load equipment list');
+    }
+  };
+
+  // -----------------------------
+  // DISPLAY CURRENT EQUIPMENT
+  // -----------------------------
+  const showEquipment = index => {
+    const eq = equipmentList[index];
+    const infoEl = document.getElementById('equipment-info');
+    infoEl.innerHTML = `
+      ${eq.image ? `<img src="${eq.image}" alt="${eq.name}" class="rounded-lg shadow-sm max-h-48 mx-auto mt-2" />` : ''}
+      <h3 class="text-xl font-semibold">${eq.name}</h3>
+    `;
+    document.getElementById('equipment-form').reset();
+    setCurrentDateTime();
+  };
+
+  // -----------------------------
+  // INIT CHOICES.JS
+  // -----------------------------
+  const initChoices = () => {
+    Object.values(choicesInstances).forEach(i=>i.destroy());
+    choicesInstances = {};
+    document.querySelectorAll('select.choices').forEach(select=>{
+      choicesInstances[select.id] = new Choices(select, {
+        searchEnabled:true,
+        addItems: select.id==='checkedBy',
+        duplicateItemsAllowed:false,
+        shouldSort:false,
+        itemSelectText:'',
+        allowHTML:false,
+        placeholder:true,
+        placeholderValue:'Select or search...'
+      });
+    });
+  };
+
+  // -----------------------------
+  // FORM SUBMISSION
+  // -----------------------------
+  document.getElementById('equipment-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    const eq = equipmentList[currentIndex];
+    const payload = {
+      facility: selectedFacility,
+      equipmentId: eq.equipmentId,
+      equipmentName: eq.name,
+      dateTime: document.getElementById('dateTime').value,
+      session: document.getElementById('session').value,
+      electricityStatus: document.getElementById('electricityStatus').value,
+      temperature: document.getElementById('temperature').value,
+      checkedBy: document.getElementById('checkedBy').value
+    };
+
+    try {
+      await fetch(API_URL, { method:'POST', body: JSON.stringify(payload) });
+      submittedEquipment.push(eq);
+      currentIndex++;
+      if(currentIndex < equipmentList.length) {
+        showEquipment(currentIndex);
+      } else {
+        formCompleted = true;
+        // Redirect to homepage
+        window.location.href = 'tempcheck-logs.html'; // <-- replace with your homepage URL
+      }
+    } catch(err) {
+      console.error(err);
+      alert('Failed to submit data.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Next';
+    }
+  });
+
+  // -----------------------------
+  // RESTART
+  // -----------------------------
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    document.getElementById('equipment-form').reset();
+    setCurrentDateTime();
+    fetchEquipment();
+  });
+
+  // -----------------------------
+  // INITIALIZATION
+  // -----------------------------
+  window.addEventListener('DOMContentLoaded', () => {
+    fetchStaffList();
+    fetchEquipment();
+    setCurrentDateTime();
+    initChoices();
+  });
+</script>
+
+  
 </div>
 
 <script>
