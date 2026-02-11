@@ -314,147 +314,172 @@ const fetchStaffList = async () => {
 
 <script>
 // ==========================================
-// PIN AUTHENTICATION WITH SALT + SHA-256
+// SHAH-IPD PIN AUTHENTICATION (SECURE)
+// Salted SHA-256 + Local Storage
 // ==========================================
 
 const PIN_LENGTH = 4;
-const SALT = "shah_ipd_2024_secure_salt"; // Change this to your unique salt
+const SALT = "shah_ipd_2024_secure_salt";
+const DEFAULT_PIN = "1234"; // 🔐 Change this to your real default PIN
+const STORAGE_KEY = "shah_ipd_hash_salt";
 
-// Pre-computed hash of SALT + DEFAULT_PIN
-// Generate this once with: await sha256Hex(SALT + DEFAULT_PIN)
-const DEFAULT_HASH = "476ea839f114f3fbcb8bc284753d2b9c4661e557e5025e9808fbb30a0e85c9f4"; // Example hash
-
+// UI Elements
 const pinContainer = document.getElementById("pin-container");
 const wrap = document.getElementById("pw-wrap");
 const content = document.getElementById("protected-content");
 const msg = document.getElementById("pw-msg");
-const STORAGE_KEY = "shah_ipd_hash_salt";
 
 const boxes = [];
 
-/* ---------- Create PIN Boxes ---------- */
-for(let i=0;i<PIN_LENGTH;i++){
-  const inp = document.createElement("input");
-  inp.type = "password";
-  inp.inputMode = "numeric";
-  inp.maxLength = 1;
-  inp.className = "w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-teal-500 focus:outline-none transition-colors";
-  pinContainer.appendChild(inp);
-  boxes.push(inp);
-}
-
-/* ---------- SHA-256 Helper with Salt ---------- */
-async function sha256Hex(text){
-  const data = new TextEncoder().encode(text);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-
-/* ---------- Generate Hash (Salt + PIN) ---------- */
-async function generateHash(pin){
-  return await sha256Hex(SALT + pin);
-}
-
-/* ---------- First-time Setup ---------- */
-async function ensureStoredHash(){
-  let stored = localStorage.getItem(STORAGE_KEY);
-  if(!stored){
-    // First run: compute hash of default PIN and store it
-    const hash = await generateHash(DEFAULT_PIN);
-    localStorage.setItem(STORAGE_KEY, hash);
-    console.log("Initial hash stored:", hash);
+// ==========================================
+// CREATE PIN INPUT BOXES
+// ==========================================
+function createPinBoxes() {
+  for (let i = 0; i < PIN_LENGTH; i++) {
+    const input = document.createElement("input");
+    input.type = "password";
+    input.inputMode = "numeric";
+    input.maxLength = 1;
+    input.className =
+      "w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-teal-500 focus:outline-none transition-colors";
+    pinContainer.appendChild(input);
+    boxes.push(input);
   }
 }
 
-/* ---------- UI Helpers ---------- */
-function showMsg(t){
-  msg.textContent = t;
-  msg.classList.remove("hidden");
-  setTimeout(()=>msg.classList.add("hidden"),2000);
+// ==========================================
+// SHA-256 HASHING
+// ==========================================
+async function sha256(text) {
+  const data = new TextEncoder().encode(text);
+  const buffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-function shakeBoxes(){
-  boxes.forEach(b=>{
-    b.classList.add("border-red-500", "bg-red-50");
-    setTimeout(()=>b.classList.remove("border-red-500", "bg-red-50"),500);
+async function generateHash(pin) {
+  return await sha256(SALT + pin);
+}
+
+// ==========================================
+// INITIAL HASH SETUP (FIRST RUN ONLY)
+// ==========================================
+async function ensureStoredHash() {
+  if (!localStorage.getItem(STORAGE_KEY)) {
+    const hash = await generateHash(DEFAULT_PIN);
+    localStorage.setItem(STORAGE_KEY, hash);
+  }
+}
+
+// ==========================================
+// UI HELPERS
+// ==========================================
+function showMessage(text) {
+  msg.textContent = text;
+  msg.classList.remove("hidden");
+  setTimeout(() => msg.classList.add("hidden"), 2000);
+}
+
+function shake() {
+  boxes.forEach(box => {
+    box.classList.add("border-red-500", "bg-red-50");
+    setTimeout(() => {
+      box.classList.remove("border-red-500", "bg-red-50");
+    }, 500);
   });
 }
 
-/* ---------- Unlock Logic ---------- */
-async function tryUnlock(){
-  const val = boxes.map(b=>b.value).join("");
+function clearBoxes() {
+  boxes.forEach(b => (b.value = ""));
+  boxes[0].focus();
+}
 
-  if(val.length !== PIN_LENGTH){
-    showMsg("Enter full 4-digit PIN");
+// ==========================================
+// UNLOCK LOGIC
+// ==========================================
+async function tryUnlock() {
+  const enteredPin = boxes.map(b => b.value).join("");
+
+  if (enteredPin.length !== PIN_LENGTH) {
+    showMessage("Enter full 4-digit PIN");
     return;
   }
 
   const storedHash = localStorage.getItem(STORAGE_KEY);
-  const candidateHash = await generateHash(val);
+  const enteredHash = await generateHash(enteredPin);
 
-  if(candidateHash === storedHash){
-    // Success
-    sessionStorage.setItem("loggedIn","true");
+  if (enteredHash === storedHash) {
+    sessionStorage.setItem("loggedIn", "true");
     wrap.classList.add("hidden");
     content.classList.remove("hidden");
-    
-    // Initialize form data
+
+    // Initialize app
     fetchStaffList();
     fetchEquipment();
     setCurrentDateTime();
   } else {
-    // Failed
-    showMsg("Incorrect PIN");
-    shakeBoxes();
-    boxes.forEach(b=>b.value="");
-    boxes[0].focus();
+    showMessage("Incorrect PIN");
+    shake();
+    clearBoxes();
   }
 }
 
-/* ---------- Input Behaviour ---------- */
-boxes.forEach((b,i)=>{
-  b.addEventListener("input",(e)=>{
-    // Only allow digits
-    b.value = b.value.replace(/\D/g,"");
-    
-    if(b.value){
-      // Move to next box
-      if(i < boxes.length-1) boxes[i+1].focus();
-      else if(boxes.every(x=>x.value)) tryUnlock();
-    }
-  });
+// ==========================================
+// INPUT BEHAVIOR
+// ==========================================
+function setupInputEvents() {
+  boxes.forEach((box, index) => {
 
-  b.addEventListener("keydown",(e)=>{
-    if(e.key==="Backspace" && !b.value && i>0){
-      boxes[i-1].focus();
-      boxes[i-1].value = "";
-    }
-    if(e.key==="Enter") tryUnlock();
-  });
-  
-  // Handle paste of full PIN
-  b.addEventListener("paste",(e)=>{
-    e.preventDefault();
-    const pasteData = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,PIN_LENGTH);
-    
-    pasteData.split('').forEach((char,idx)=>{
-      if(boxes[idx]) boxes[idx].value = char;
+    box.addEventListener("input", () => {
+      box.value = box.value.replace(/\D/g, "");
+
+      if (box.value && index < PIN_LENGTH - 1) {
+        boxes[index + 1].focus();
+      }
+
+      if (boxes.every(b => b.value)) {
+        tryUnlock();
+      }
     });
-    
-    if(pasteData.length === PIN_LENGTH){
-      tryUnlock();
-    } else if(pasteData.length < PIN_LENGTH){
-      boxes[pasteData.length].focus();
-    }
-  });
-});
 
-/* ---------- Init ---------- */
-window.addEventListener("DOMContentLoaded", async ()=>{
+    box.addEventListener("keydown", e => {
+      if (e.key === "Backspace" && !box.value && index > 0) {
+        boxes[index - 1].focus();
+      }
+      if (e.key === "Enter") {
+        tryUnlock();
+      }
+    });
+
+    box.addEventListener("paste", e => {
+      e.preventDefault();
+      const pasted = e.clipboardData
+        .getData("text")
+        .replace(/\D/g, "")
+        .slice(0, PIN_LENGTH);
+
+      pasted.split("").forEach((char, i) => {
+        if (boxes[i]) boxes[i].value = char;
+      });
+
+      if (pasted.length === PIN_LENGTH) {
+        tryUnlock();
+      }
+    });
+
+  });
+}
+
+// ==========================================
+// INITIALIZATION
+// ==========================================
+window.addEventListener("DOMContentLoaded", async () => {
+  createPinBoxes();
+  setupInputEvents();
   await ensureStoredHash();
 
-  if(sessionStorage.getItem("loggedIn")==="true"){
+  if (sessionStorage.getItem("loggedIn") === "true") {
     wrap.classList.add("hidden");
     content.classList.remove("hidden");
     fetchStaffList();
@@ -465,6 +490,7 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   }
 });
 </script>
+
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
