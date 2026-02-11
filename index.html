@@ -4,91 +4,96 @@
 <meta charset="UTF-8">
 <title>SHAH-IPD Coldchain Temperature Monitoring</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#ffffff">
+<style>
+  body { background-color: #ffffff; }
+  /* Customizing Choices.js to match white theme */
+  .choices__inner { background-color: #ffffff !important; border-radius: 8px !important; border: 1px solid #e5e7eb !important; }
+</style>
 </head>
-  <body>
-<div id="pin-screen" style="text-align: center; padding: 40px 20px; background: #ffffff; border: 1px solid #ddd; border-radius: 12px; max-width: 300px; margin: 20px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-family: Arial, sans-serif;">
-    <h2 style="margin-top: 0; color: #333;">Enter PIN</h2>
+<body class="bg-white text-gray-900 font-sans">
+
+<div id="pin-screen" class="text-center py-10 px-5 bg-white border border-gray-200 rounded-xl max-w-xs mx-auto mt-10 shadow-sm">
+    <h2 class="text-2xl font-semibold mb-6 text-gray-800">Enter PIN</h2>
     
-    <div style="display: flex; justify-content: center; gap: 8px; margin: 20px 0;">
-        <input type="password" class="pbox" id="d1" maxlength="1" inputmode="numeric" oninput="move(this, 'd2')" style="width: 45px; height: 50px; text-align: center; font-size: 22px; border: 2px solid #ccc; border-radius: 8px;">
-        <input type="password" class="pbox" id="d2" maxlength="1" inputmode="numeric" oninput="move(this, 'd3')" style="width: 45px; height: 50px; text-align: center; font-size: 22px; border: 2px solid #ccc; border-radius: 8px;">
-        <input type="password" class="pbox" id="d3" maxlength="1" inputmode="numeric" oninput="move(this, 'd4')" style="width: 45px; height: 50px; text-align: center; font-size: 22px; border: 2px solid #ccc; border-radius: 8px;">
-        <input type="password" class="pbox" id="d4" maxlength="1" inputmode="numeric" oninput="move(this, '')" style="width: 45px; height: 50px; text-align: center; font-size: 22px; border: 2px solid #ccc; border-radius: 8px;">
+    <div class="flex justify-center gap-2 mb-6">
+        <input type="password" class="pbox w-11 h-12 text-center text-xl border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-all" id="d1" maxlength="1" inputmode="numeric" oninput="move(this, 'd2')">
+        <input type="password" class="pbox w-11 h-12 text-center text-xl border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-all" id="d2" maxlength="1" inputmode="numeric" oninput="move(this, 'd3')">
+        <input type="password" class="pbox w-11 h-12 text-center text-xl border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-all" id="d3" maxlength="1" inputmode="numeric" oninput="move(this, 'd4')">
+        <input type="password" class="pbox w-11 h-12 text-center text-xl border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-all" id="d4" maxlength="1" inputmode="numeric" oninput="move(this, '')">
     </div>
 
-    <div id="error-msg" style="color: #d93025; font-size: 13px; display: none; margin-bottom: 10px;">❌ Incorrect PIN.</div>
-    <button onclick="verify()" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">Unlock</button>
+    <div id="error-msg" class="text-red-500 text-sm mb-4 hidden">❌ Incorrect PIN.</div>
+    <button onclick="verify()" class="bg-gray-900 hover:bg-black text-white py-3 px-6 rounded-lg font-medium w-full transition-colors">Unlock</button>
 </div>
 
-<div id="secret-content" style="display: none; padding: 20px; border: 2px dashed #27ae60; background: #f1fcf4; border-radius: 10px; margin-top: 20px; text-align: center;">
-    <h3 style="color: #27ae60;">🔓 Access Granted!</h3>
+<div id="secret-content" style="display: none;" class="p-6 max-w-md mx-auto bg-white border border-gray-100 rounded-2xl shadow-sm mt-5">
+    <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">🔓 Access Granted</h3>
 
-<div id="equipment-info" class="mb-4 text-center"></div>
+    <div id="equipment-info" class="mb-6 text-center"></div>
 
-  <form id="equipment-form" class="space-y-4">
+    <form id="equipment-form" class="space-y-5">
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Date & Time of Check</label>
+            <input type="datetime-local" id="dateTime" required class="mt-1 w-full border border-gray-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-blue-500 outline-none" max="">
+        </div>
 
-    <div>
-      <label class="block font-medium">Date & Time of Check</label>
-      <input type="datetime-local" id="dateTime" required class="mt-1 w-full border rounded-lg p-2" max="">
-    </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Session</label>
+            <select id="session" required class="choices mt-1 w-full border border-gray-300 rounded-lg p-2 bg-white">
+                <option value="">Select...</option>
+                <option value="morning">Morning</option>
+                <option value="evening">Evening</option>
+            </select>
+        </div>
 
-    <div>
-      <label class="block font-medium">Session</label>
-      <select id="session" required class="choices mt-1 w-full border rounded-lg p-2">
-        <option value="">Select...</option>
-        <option value="morning">Morning</option>
-        <option value="evening">Evening</option>
-      </select>
-    </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Electricity Status</label>
+            <select id="electricityStatus" required class="choices mt-1 w-full border border-gray-300 rounded-lg p-2 bg-white">
+                <option value="">Select...</option>
+                <option value="running">Running</option>
+                <option value="off">Off</option>
+            </select>
+        </div>
 
-    <div>
-      <label class="block font-medium">Electricity Status</label>
-      <select id="electricityStatus" required class="choices mt-1 w-full border rounded-lg p-2">
-        <option value="">Select...</option>
-        <option value="running">Running</option>
-        <option value="off">Off</option>
-      </select>
-    </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Temperature (°C)</label>
+            <input type="number" step="0.1" id="temperature" required class="mt-1 w-full border border-gray-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
 
-    <div>
-      <label class="block font-medium">Temperature (°C)</label>
-      <input type="number" step="0.1" id="temperature" required class="mt-1 w-full border rounded-lg p-2">
-    </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Checked By</label>
+            <select id="checkedBy" required class="choices mt-1 w-full border border-gray-300 rounded-lg p-2 bg-white"></select>
+        </div>
 
-    <div>
-      <label class="block font-medium">Checked By</label>
-      <select id="checkedBy" required class="choices mt-1 w-full border rounded-lg p-2"></select>
-    </div>
-
-    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg shadow-md">
-      Next
-    </button>
-  </form>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold shadow-sm transition-all">
+            Next
+        </button>
+    </form>
 </div>
 
-<div id="done" class="hidden mt-6 text-center">
-  <h3 class="text-lg font-medium">All equipment processed!</h3>
-  <button id="restartBtn" class="mt-4 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">Restart</button>
+<div id="done" class="hidden mt-10 text-center">
+    <h3 class="text-xl font-semibold">All equipment processed!</h3>
+    <button id="restartBtn" class="mt-4 bg-gray-900 hover:bg-black text-white py-2 px-6 rounded-lg transition-colors">Restart</button>
 </div>
 
-<!-- Confirmation Modal -->
-<div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg p-6 max-w-lg w-full shadow-lg">
-    <h3 class="text-xl font-semibold mb-4 text-center">Submitted Equipment</h3>
-    <div id="submittedEquipmentList" class="grid grid-cols-3 gap-4 max-h-64 overflow-auto mb-6"></div>
-    <div class="text-center">
-      <button id="confirmBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg">Confirm</button>
+<div id="confirmationModal" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center hidden z-50">
+  <div class="bg-white border border-gray-200 rounded-2xl p-8 max-w-lg w-full shadow-2xl">
+    <h3 class="text-xl font-bold mb-6 text-center text-gray-800">Submitted Equipment</h3>
+    <div id="submittedEquipmentList" class="grid grid-cols-2 gap-4 max-h-64 overflow-auto mb-8"></div>
+    <div class="text-center border-t pt-6">
+      <button id="confirmBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-10 rounded-xl font-bold transition-all">Confirm</button>
     </div>
   </div>
 </div>
 
 <script>
   const API_URL = 'https://script.google.com/macros/s/AKfycbwltkQI_ljrd68ODKIMJrPca2cDEhTdtdDHZNm70i088yrnbXFGhoHt-LhNdcfNuxbVbg/exec';
-  const selectedFacility = 'SHAH-IPD'; // mapped to Sh. Komandoo HC
+  const selectedFacility = 'SHAH-IPD';
 
   let equipmentList = [];
   let currentIndex = 0;
@@ -96,9 +101,6 @@
   let submittedEquipment = [];
   let choicesInstances = {};
 
-  // -----------------------------
-  // UTILITY FUNCTIONS
-  // -----------------------------
   const toggleVisibility = (id, show) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -129,25 +131,15 @@
     setSessionBasedOnTime(localTime);
   };
 
-  // -----------------------------
-  // FETCH STAFF LIST
-  // -----------------------------
 const fetchStaffList = async () => {
-  const STAFF_API_URL =
-    "https://script.google.com/macros/s/AKfycbyaBLAkJtS1lH0uJXZxmpLoHwb6kM51lQWyMuLlvDGXIdfovZhl8ag3MnMDL_aeq-oGmA/exec";
-
+  const STAFF_API_URL = "https://script.google.com/macros/s/AKfycbyaBLAkJtS1lH0uJXZxmpLoHwb6kM51lQWyMuLlvDGXIdfovZhl8ag3MnMDL_aeq-oGmA/exec";
   const staffSelect = document.getElementById("checkedBy");
   staffSelect.innerHTML = "";
-
   try {
-    // Only one needed (because facility is fixed)
     const hcfName = "SHAH-IPD";
-
     const res = await fetch(STAFF_API_URL);
     const data = await res.json();
-
     const filtered = data.filter(staff => staff.Hcf === hcfName);
-
     if (filtered.length === 0) {
       const opt = document.createElement("option");
       opt.value = "no_staff";
@@ -156,45 +148,29 @@ const fetchStaffList = async () => {
       initChoices();
       return;
     }
-
     filtered.forEach(item => {
       const opt = document.createElement("option");
       opt.value = item["Staff Name and Designation"];
       opt.textContent = item["Staff Name and Designation"];
       staffSelect.appendChild(opt);
     });
-
     const registerOpt = document.createElement("option");
     registerOpt.value = "not_in_list";
     registerOpt.textContent = "Not in list: Select to Register";
     staffSelect.appendChild(registerOpt);
-
     initChoices();
-
     staffSelect.addEventListener("change", () => {
       if (staffSelect.value === "not_in_list") {
-        const registerURL =
-          `https://shaviyanipublichealth.blogspot.com/p/register-new.html?hcf=${encodeURIComponent(selectedFacility)}`;
-
-        window.open(
-          registerURL,
-          "RegisterStaff",
-          "width=900,height=700,top=100,left=100,resizable=yes,scrollbars=yes"
-        );
-
+        const registerURL = `https://shaviyanipublichealth.blogspot.com/p/register-new.html?hcf=${encodeURIComponent(selectedFacility)}`;
+        window.open(registerURL, "RegisterStaff", "width=900,height=700,top=100,left=100,resizable=yes,scrollbars=yes");
         staffSelect.choicesInstance?.setChoiceByValue("");
       }
     });
-
   } catch (err) {
     console.error("Failed to fetch staff", err);
-    alert("Could not load staff list");
   }
 };
 
-  // -----------------------------
-  // FETCH EQUIPMENT LIST
-  // -----------------------------
   const fetchEquipment = async () => {
     try {
       const res = await fetch(`${API_URL}?action=getEquipment&facility=${selectedFacility}`);
@@ -204,27 +180,20 @@ const fetchStaffList = async () => {
       if(equipmentList.length > 0) showEquipment(currentIndex);
     } catch(err) {
       console.error('Failed to fetch equipment', err);
-      alert('Could not load equipment list');
     }
   };
 
-  // -----------------------------
-  // DISPLAY CURRENT EQUIPMENT
-  // -----------------------------
   const showEquipment = index => {
     const eq = equipmentList[index];
     const infoEl = document.getElementById('equipment-info');
     infoEl.innerHTML = `
-      ${eq.image ? `<img src="${eq.image}" alt="${eq.name}" class="rounded-lg shadow-sm max-h-48 mx-auto mt-2" />` : ''}
-      <h3 class="text-xl font-semibold">${eq.name}</h3>
+      ${eq.image ? `<img src="${eq.image}" alt="${eq.name}" class="rounded-xl border border-gray-100 shadow-sm max-h-48 mx-auto mb-4" />` : ''}
+      <h3 class="text-xl font-bold text-gray-900">${eq.name}</h3>
     `;
     document.getElementById('equipment-form').reset();
     setCurrentDateTime();
   };
 
-  // -----------------------------
-  // INIT CHOICES.JS
-  // -----------------------------
   const initChoices = () => {
     Object.values(choicesInstances).forEach(i=>i.destroy());
     choicesInstances = {};
@@ -242,15 +211,11 @@ const fetchStaffList = async () => {
     });
   };
 
-  // -----------------------------
-  // FORM SUBMISSION
-  // -----------------------------
   document.getElementById('equipment-form').addEventListener('submit', async e => {
     e.preventDefault();
     const submitBtn = e.target.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting...';
-
     const eq = equipmentList[currentIndex];
     const payload = {
       facility: selectedFacility,
@@ -262,7 +227,6 @@ const fetchStaffList = async () => {
       temperature: document.getElementById('temperature').value,
       checkedBy: document.getElementById('checkedBy').value
     };
-
     try {
       await fetch(API_URL, { method:'POST', body: JSON.stringify(payload) });
       submittedEquipment.push(eq);
@@ -271,8 +235,7 @@ const fetchStaffList = async () => {
         showEquipment(currentIndex);
       } else {
         formCompleted = true;
-        // Redirect to homepage
-        window.location.href = 'tempcheck-logs.html'; // <-- replace with your homepage URL
+        window.location.href = 'tempcheck-logs.html';
       }
     } catch(err) {
       console.error(err);
@@ -283,18 +246,12 @@ const fetchStaffList = async () => {
     }
   });
 
-  // -----------------------------
-  // RESTART
-  // -----------------------------
   document.getElementById('restartBtn').addEventListener('click', () => {
     document.getElementById('equipment-form').reset();
     setCurrentDateTime();
     fetchEquipment();
   });
 
-  // -----------------------------
-  // INITIALIZATION
-  // -----------------------------
   window.addEventListener('DOMContentLoaded', () => {
     fetchStaffList();
     fetchEquipment();
@@ -303,22 +260,14 @@ const fetchStaffList = async () => {
   });
 </script>
 
-  
-</div>
-
 <script>
-// 1. Move to next box automatically
 function move(current, nextId) {
     if (current.value.length >= 1 && nextId !== "") {
         document.getElementById(nextId).focus();
     }
-    // If it's the last box, we can auto-verify or wait for button click
-    if (nextId === "") {
-        verify(); 
-    }
+    if (nextId === "") { verify(); }
 }
 
-// 2. Add backspace support to go backward
 document.querySelectorAll('.pbox').forEach((box, index, all) => {
     box.addEventListener('keydown', (e) => {
         if (e.key === "Backspace" && box.value === "" && index > 0) {
@@ -327,23 +276,20 @@ document.querySelectorAll('.pbox').forEach((box, index, all) => {
     });
 });
 
-// 3. Secure Verification for PIN 2580
 function verify() {
     const p1 = document.getElementById('d1').value;
     const p2 = document.getElementById('d2').value;
     const p3 = document.getElementById('d3').value;
     const p4 = document.getElementById('d4').value;
-    
     const salt = "BloggerVault77";
     const combined = p1 + p2 + p3 + p4 + salt;
-    const secureKey = "MjU4MEJsb2dnZXJWYXVsdDc3"; // Encoded 2580 + Salt
+    const secureKey = "MjU4MEJsb2dnZXJWYXVsdDc3"; 
 
     if (btoa(combined) === secureKey) {
         document.getElementById('pin-screen').style.display = 'none';
         document.getElementById('secret-content').style.display = 'block';
     } else {
         document.getElementById('error-msg').style.display = 'block';
-        // Clear all boxes and return to first box
         document.querySelectorAll('.pbox').forEach(b => b.value = "");
         document.getElementById('d1').focus();
     }
