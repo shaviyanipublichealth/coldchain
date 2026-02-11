@@ -1,259 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Komandoo HC Coldchain</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0d9488">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-</head>
-<body class="bg-gray-100 font-sans">
+const CACHE_NAME = "shah-ipd-coldchain-v1";
+const urlsToCache = [
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "https://cdn.tailwindcss.com",
+  "https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css",
+  "https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"
+];
 
-<div id="page-wrapper" class="flex justify-center pt-10 w-full px-4">
-    <div id="pw-wrap" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm text-center">
-        <h2 class="text-xl font-bold text-teal-800 mb-2">Sh. Komandoo HC Monitoring</h2>
-        <p class="text-gray-600 mb-6">Enter your 4-digit PIN.</p>
-        <div id="pin-container" class="flex justify-center gap-2 mb-4 items-center"></div>
-        <p id="pw-msg" class="text-red-600 font-semibold mt-3 hidden"></p>
-    </div>
+// Install
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
+});
 
-    <div id="protected-content" class="hidden bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl mt-6">
-        <div class="flex justify-between items-center mb-4 bg-teal-50 p-4 rounded-lg">
-            <h3 class="text-teal-800 font-bold">✅ Access Granted</h3>
-            <a href="/" id="go-home" class="px-4 py-2 bg-teal-500 text-white rounded-lg font-semibold hover:bg-teal-600 transition">Log Out</a>
-        </div>
+// Activate
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(name => {
+          if (name !== CACHE_NAME) {
+            return caches.delete(name);
+          }
+        })
+      );
+    })
+  );
+});
 
-        <div class="max-w-xl mx-auto">
-            <div id="equipment-info" class="mb-4 text-center"></div>
-            <form id="equipment-form" class="space-y-4">
-                <input type="hidden" name="facility_code" value="komandoohc" />
-                <div>
-                    <label class="block font-medium">Date & Time of Check</label>
-                    <input type="datetime-local" id="dateTime" required class="mt-1 w-full border rounded-lg p-2">
-                </div>
-                <div>
-                    <label class="block font-medium">Session</label>
-                    <select id="session" required class="choices mt-1 w-full border rounded-lg p-2">
-                        <option value="">Select...</option>
-                        <option value="morning">Morning</option>
-                        <option value="evening">Evening</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-medium">Electricity Status</label>
-                    <select id="electricityStatus" required class="choices mt-1 w-full border rounded-lg p-2">
-                        <option value="">Select...</option>
-                        <option value="running">Running</option>
-                        <option value="off">Off</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-medium">Temperature (°C)</label>
-                    <input type="number" step="0.1" id="temperature" required class="mt-1 w-full border rounded-lg p-2">
-                </div>
-                <div>
-                    <label class="block font-medium">Checked By</label>
-                    <select id="checkedBy" required class="choices mt-1 w-full border rounded-lg p-2"></select>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-md">Next Equipment</button>
-            </form>
-        </div>
-
-        <div id="done" class="hidden mt-6 text-center">
-            <h3 class="text-lg font-bold text-green-700">All equipment processed!</h3>
-            <button id="restartBtn" class="mt-4 bg-gray-600 text-white py-2 px-4 rounded-lg">Restart List</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    // --- APP CONFIG ---
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwltkQI_ljrd68ODKIMJrPca2cDEhTdtdDHZNm70i088yrnbXFGhoHt-LhNdcfNuxbVbg/exec';
-    const selectedFacility = 'komandoohc';
-    const PIN_LENGTH = 4;
-    const salt = "c13_salt";
-    
-    // This hash corresponds exactly to PIN: 4927
-    const correctHash = "7f717833a69993358053a99e8210344b360341764653e025997233261763297a"; 
-
-    let equipmentList = [];
-    let currentIndex = 0;
-    let choicesInstances = {};
-
-    // --- PIN UI GENERATION ---
-    const pinContainer = document.getElementById("pin-container");
-    const boxes = [];
-    
-    // Clear container and create 4 boxes
-    pinContainer.innerHTML = '';
-    for(let i=0; i<PIN_LENGTH; i++){
-        const inp = document.createElement("input");
-        inp.type="password"; 
-        inp.inputMode="numeric"; 
-        inp.maxLength=1;
-        // Added font-bold and slightly larger text for better visibility
-        inp.className="w-12 h-14 text-center text-2xl font-bold border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 mx-1";
-        pinContainer.appendChild(inp);
-        boxes.push(inp);
-    }
-
-    // --- SECURITY HELPERS ---
-    async function sha256Hex(text){
-        const msgUint8 = new TextEncoder().encode(text);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-        return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    async function tryUnlock(){
-        const val = boxes.map(b => b.value).join("");
-        if(val.length !== PIN_LENGTH) return;
-        
-        const candidate = await sha256Hex(salt + val);
-        if(candidate === correctHash){
-            sessionStorage.setItem("loggedIn", "true");
-            document.getElementById("pw-wrap").classList.add("hidden");
-            document.getElementById("protected-content").classList.remove("hidden");
-            fetchEquipment();
-            fetchStaffList();
-        } else {
-            const msgEl = document.getElementById("pw-msg");
-            msgEl.textContent = "Invalid PIN - Try again";
-            msgEl.classList.remove("hidden");
-            // Reset boxes on failure
-            boxes.forEach(b => b.value = ""); 
-            boxes[0].focus();
-        }
-    }
-
-    // --- INPUT EVENT LISTENERS ---
-    boxes.forEach((box, i) => {
-        box.addEventListener("input", (e) => {
-            // Ensure only numbers
-            box.value = box.value.replace(/\D/g, '');
-            if(box.value && i < PIN_LENGTH - 1) boxes[i+1].focus();
-            if(boxes.every(b => b.value)) tryUnlock();
-        });
-        box.addEventListener("keydown", (e) => {
-            if(e.key === "Backspace" && !box.value && i > 0) boxes[i-1].focus();
-        });
-    });
-
-    // --- DATA FETCHING ---
-    const fetchEquipment = async () => {
-        try {
-            const res = await fetch(`${API_URL}?action=getEquipment&facility=${selectedFacility}`);
-            equipmentList = await res.json();
-            if(equipmentList.length > 0) showEquipment(0);
-        } catch(err) { console.error('Equipment Fetch Error:', err); }
-    };
-
-    const showEquipment = index => {
-        const eq = equipmentList[index];
-        const infoEl = document.getElementById('equipment-info');
-        infoEl.innerHTML = `
-            ${eq.image ? `<img src="${eq.image}" class="rounded-lg max-h-40 mx-auto mb-2 shadow-sm" />` : ''}
-            <h3 class="text-xl font-bold text-teal-800">${eq.name}</h3>
-            <p class="text-sm text-gray-500">Item ${index + 1} of ${equipmentList.length}</p>
-        `;
-        document.getElementById('equipment-form').reset();
-        setCurrentDateTime();
-    };
-
-    const setCurrentDateTime = () => {
-        // Maldives Time Offset (GMT+5)
-        const now = new Date(new Date().getTime() + (5 * 60) * 60000);
-        document.getElementById('dateTime').value = now.toISOString().slice(0,16);
-    };
-
-    const fetchStaffList = async () => {
-        const STAFF_API = "https://script.google.com/macros/s/AKfycbyaBLAkJtS1lH0uJXZxmpLoHwb6kM51lQWyMuLlvDGXIdfovZhl8ag3MnMDL_aeq-oGmA/exec";
-        try {
-            const res = await fetch(STAFF_API);
-            const data = await res.json();
-            const staffSelect = document.getElementById("checkedBy");
-            staffSelect.innerHTML = '<option value="">Select Staff...</option>';
-            
-            // Note: Changed filter to Sh. Komandoo HC to match your facility
-            data.filter(s => s.Hcf === "Sh. Komandoo HC").forEach(s => {
-                const opt = document.createElement("option");
-                opt.value = s["Staff Name and Designation"];
-                opt.textContent = s["Staff Name and Designation"];
-                staffSelect.appendChild(opt);
-            });
-            initChoices();
-        } catch(e) { console.error('Staff List Error:', e); }
-    };
-
-    const initChoices = () => {
-        document.querySelectorAll('select.choices').forEach(el => {
-            // Destroy existing instance if it exists to prevent duplicates
-            if (choicesInstances[el.id]) choicesInstances[el.id].destroy();
-            choicesInstances[el.id] = new Choices(el, { searchEnabled: true, itemSelectText: '' });
-        });
-    };
-
-    // --- SUBMISSION ---
-    document.getElementById('equipment-form').addEventListener('submit', async e => {
-        e.preventDefault();
-        if(!navigator.onLine) return alert("Offline! Please connect to internet.");
-        
-        const btn = e.target.querySelector('button');
-        const originalText = btn.textContent;
-        btn.disabled = true; 
-        btn.textContent = "Processing...";
-
-        const payload = {
-            facility: selectedFacility,
-            equipmentId: equipmentList[currentIndex].equipmentId,
-            equipmentName: equipmentList[currentIndex].name,
-            dateTime: document.getElementById('dateTime').value,
-            session: document.getElementById('session').value,
-            electricityStatus: document.getElementById('electricityStatus').value,
-            temperature: document.getElementById('temperature').value,
-            checkedBy: document.getElementById('checkedBy').value
-        };
-
-        try {
-            const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-            if(response.ok) {
-                currentIndex++;
-                if(currentIndex < equipmentList.length) {
-                    showEquipment(currentIndex);
-                } else {
-                    document.getElementById('equipment-form').classList.add('hidden');
-                    document.getElementById('done').classList.remove('hidden');
-                }
-            }
-        } catch(err) { 
-            alert("Submission failed. Please try again."); 
-        } finally {
-            btn.disabled = false; 
-            btn.textContent = originalText;
-        }
-    });
-
-    // PWA Registration
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW failed', err));
-        });
-    }
-
-    // Logout logic
-    document.getElementById("go-home").addEventListener("click", () => {
-        sessionStorage.removeItem("loggedIn");
-        window.location.reload();
-    });
-
-    // Auto-focus first box on load
-    window.onload = () => {
-        if(sessionStorage.getItem("loggedIn") !== "true") boxes[0].focus();
-    };
-</script>
-</body>
-</html>
+// Fetch
+self.addEventListener("fetch", event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
+  );
+});
