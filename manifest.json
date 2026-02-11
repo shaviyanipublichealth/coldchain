@@ -1,19 +1,19 @@
 {
-  "name": "Komandoo HC Coldchain",
-  "short_name": "Coldchain",
-  "description": "Temperature monitoring for Sh. Komandoo Health Center",
+  "name": "SHAH-IPD Coldchain Monitoring",
+  "short_name": "SHAH-IPD Coldchain",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0d9488",
+  "background_color": "#f1f5f9",
+  "theme_color": "#0f766e",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1048/1048953.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1048/1048953.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
