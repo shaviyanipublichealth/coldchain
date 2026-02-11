@@ -6,464 +6,69 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f766e">
-
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 </head>
-
-<body class="bg-slate-100">
-
-<!-- Wrapper -->
-<div class="flex justify-center pt-10 w-full px-4">
-
-  <!-- PIN Box -->
-  <div id="pw-wrap" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm text-center">
-    <h2 class="text-xl font-bold text-teal-800 mb-2">SHAH-IPD Coldchain Temperature Monitoring</h2>
-    <p class="text-gray-600 mb-6">Enter your 4-digit PIN</p>
-    <div id="pin-container" class="flex justify-center gap-2 mb-4"></div>
-    <p id="pw-msg" class="text-red-600 font-semibold hidden"></p>
-  </div>
-
-  <!-- Protected Content -->
-  <div id="protected-content" class="hidden bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl mt-6">
-
-    <div class="flex justify-between mb-4">
-      <h3 class="text-teal-800 font-bold">Access Granted</h3>
+  <body>
+<div id="pin-screen" style="text-align: center; padding: 40px 20px; background: #ffffff; border: 1px solid #ddd; border-radius: 12px; max-width: 300px; margin: 20px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-family: Arial, sans-serif;">
+    <h2 style="margin-top: 0; color: #333;">Enter PIN</h2>
+    
+    <div style="display: flex; justify-content: center; gap: 8px; margin: 20px 0;">
+        <input type="password" class="pbox" id="d1" maxlength="1" inputmode="numeric" oninput="move(this, 'd2')" style="width: 45px; height: 50px; text-align: center; font-size: 22px; border: 2px solid #ccc; border-radius: 8px;">
+        <input type="password" class="pbox" id="d2" maxlength="1" inputmode="numeric" oninput="move(this, 'd3')" style="width: 45px; height: 50px; text-align: center; font-size: 22px; border: 2px solid #ccc; border-radius: 8px;">
+        <input type="password" class="pbox" id="d3" maxlength="1" inputmode="numeric" oninput="move(this, 'd4')" style="width: 45px; height: 50px; text-align: center; font-size: 22px; border: 2px solid #ccc; border-radius: 8px;">
+        <input type="password" class="pbox" id="d4" maxlength="1" inputmode="numeric" oninput="move(this, '')" style="width: 45px; height: 50px; text-align: center; font-size: 22px; border: 2px solid #ccc; border-radius: 8px;">
     </div>
 
-<div id="equipment-info" class="mb-4 text-center"></div>
-
-  <form id="equipment-form" class="space-y-4">
-
-    <div>
-      <label class="block font-medium">Date & Time of Check</label>
-      <input type="datetime-local" id="dateTime" required class="mt-1 w-full border rounded-lg p-2" max="">
-    </div>
-
-    <div>
-      <label class="block font-medium">Session</label>
-      <select id="session" required class="choices mt-1 w-full border rounded-lg p-2">
-        <option value="">Select...</option>
-        <option value="morning">Morning</option>
-        <option value="evening">Evening</option>
-      </select>
-    </div>
-
-    <div>
-      <label class="block font-medium">Electricity Status</label>
-      <select id="electricityStatus" required class="choices mt-1 w-full border rounded-lg p-2">
-        <option value="">Select...</option>
-        <option value="running">Running</option>
-        <option value="off">Off</option>
-      </select>
-    </div>
-
-    <div>
-      <label class="block font-medium">Temperature (°C)</label>
-      <input type="number" step="0.1" id="temperature" required class="mt-1 w-full border rounded-lg p-2">
-    </div>
-
-    <div>
-      <label class="block font-medium">Checked By</label>
-      <select id="checkedBy" required class="choices mt-1 w-full border rounded-lg p-2"></select>
-    </div>
-
-    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg shadow-md">
-      Next
-    </button>
-  </form>
+    <div id="error-msg" style="color: #d93025; font-size: 13px; display: none; margin-bottom: 10px;">❌ Incorrect PIN.</div>
+    <button onclick="verify()" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;">Unlock</button>
 </div>
 
-<div id="done" class="hidden mt-6 text-center">
-  <h3 class="text-lg font-medium">All equipment processed!</h3>
-  <button id="restartBtn" class="mt-4 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">Restart</button>
-</div>
-
-<!-- Confirmation Modal -->
-<div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg p-6 max-w-lg w-full shadow-lg">
-    <h3 class="text-xl font-semibold mb-4 text-center">Submitted Equipment</h3>
-    <div id="submittedEquipmentList" class="grid grid-cols-3 gap-4 max-h-64 overflow-auto mb-6"></div>
-    <div class="text-center">
-      <button id="confirmBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg">Confirm</button>
-    </div>
-  </div>
+<div id="secret-content" style="display: none; padding: 20px; border: 2px dashed #27ae60; background: #f1fcf4; border-radius: 10px; margin-top: 20px; text-align: center;">
+    <h3 style="color: #27ae60;">🔓 Access Granted!</h3>
+    <p>This is your hidden content.</p>
 </div>
 
 <script>
-  const API_URL = 'https://script.google.com/macros/s/AKfycbwltkQI_ljrd68ODKIMJrPca2cDEhTdtdDHZNm70i088yrnbXFGhoHt-LhNdcfNuxbVbg/exec';
-  const selectedFacility = 'SHAH-IPD'; // mapped to Sh. Komandoo HC
-
-  let equipmentList = [];
-  let currentIndex = 0;
-  let formCompleted = false;
-  let submittedEquipment = [];
-  let choicesInstances = {};
-
-  // -----------------------------
-  // UTILITY FUNCTIONS
-  // -----------------------------
-  const toggleVisibility = (id, show) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.classList.toggle('hidden', !show);
-  };
-
-  const getMaldivesLocalDateTime = () => {
-    const offsetMinutes = 5 * 60;
-    const nowUtc = new Date();
-    const localTime = new Date(nowUtc.getTime() + offsetMinutes * 60000);
-    const pad = n => String(n).padStart(2, '0');
-    return `${localTime.getUTCFullYear()}-${pad(localTime.getUTCMonth()+1)}-${pad(localTime.getUTCDate())}T${pad(localTime.getUTCHours())}:${pad(localTime.getUTCMinutes())}`;
-  };
-
-  const setSessionBasedOnTime = dateTime => {
-    if (!dateTime) return;
-    const hour = parseInt(dateTime.split('T')[1].split(':')[0], 10);
-    const sessionSelect = document.getElementById('session');
-    sessionSelect.value = hour >=6 && hour <13 ? 'morning' :
-                          hour >=18 && hour <24 ? 'evening' : '';
-  };
-
-  const setCurrentDateTime = () => {
-    const dtInput = document.getElementById('dateTime');
-    const localTime = getMaldivesLocalDateTime();
-    dtInput.value = localTime;
-    dtInput.max = localTime;
-    setSessionBasedOnTime(localTime);
-  };
-
-  // -----------------------------
-  // FETCH STAFF LIST
-  // -----------------------------
-const fetchStaffList = async () => {
-  const STAFF_API_URL =
-    "https://script.google.com/macros/s/AKfycbyaBLAkJtS1lH0uJXZxmpLoHwb6kM51lQWyMuLlvDGXIdfovZhl8ag3MnMDL_aeq-oGmA/exec";
-
-  const staffSelect = document.getElementById("checkedBy");
-  staffSelect.innerHTML = "";
-
-  try {
-    // Only one needed (because facility is fixed)
-    const hcfName = "SHAH-IPD";
-
-    const res = await fetch(STAFF_API_URL);
-    const data = await res.json();
-
-    const filtered = data.filter(staff => staff.Hcf === hcfName);
-
-    if (filtered.length === 0) {
-      const opt = document.createElement("option");
-      opt.value = "no_staff";
-      opt.textContent = "No staff found. Please register manually.";
-      staffSelect.appendChild(opt);
-      initChoices();
-      return;
+// 1. Move to next box automatically
+function move(current, nextId) {
+    if (current.value.length >= 1 && nextId !== "") {
+        document.getElementById(nextId).focus();
     }
+    // If it's the last box, we can auto-verify or wait for button click
+    if (nextId === "") {
+        verify(); 
+    }
+}
 
-    filtered.forEach(item => {
-      const opt = document.createElement("option");
-      opt.value = item["Staff Name and Designation"];
-      opt.textContent = item["Staff Name and Designation"];
-      staffSelect.appendChild(opt);
+// 2. Add backspace support to go backward
+document.querySelectorAll('.pbox').forEach((box, index, all) => {
+    box.addEventListener('keydown', (e) => {
+        if (e.key === "Backspace" && box.value === "" && index > 0) {
+            all[index - 1].focus();
+        }
     });
-
-    const registerOpt = document.createElement("option");
-    registerOpt.value = "not_in_list";
-    registerOpt.textContent = "Not in list: Select to Register";
-    staffSelect.appendChild(registerOpt);
-
-    initChoices();
-
-    staffSelect.addEventListener("change", () => {
-      if (staffSelect.value === "not_in_list") {
-        const registerURL =
-          `https://shaviyanipublichealth.blogspot.com/p/register-new.html?hcf=${encodeURIComponent(selectedFacility)}`;
-
-        window.open(
-          registerURL,
-          "RegisterStaff",
-          "width=900,height=700,top=100,left=100,resizable=yes,scrollbars=yes"
-        );
-
-        staffSelect.choicesInstance?.setChoiceByValue("");
-      }
-    });
-
-  } catch (err) {
-    console.error("Failed to fetch staff", err);
-    alert("Could not load staff list");
-  }
-};
-
-  // -----------------------------
-  // FETCH EQUIPMENT LIST
-  // -----------------------------
-  const fetchEquipment = async () => {
-    try {
-      const res = await fetch(`${API_URL}?action=getEquipment&facility=${selectedFacility}`);
-      equipmentList = await res.json();
-      currentIndex = 0;
-      submittedEquipment = [];
-      if(equipmentList.length > 0) showEquipment(currentIndex);
-    } catch(err) {
-      console.error('Failed to fetch equipment', err);
-      alert('Could not load equipment list');
-    }
-  };
-
-  // -----------------------------
-  // DISPLAY CURRENT EQUIPMENT
-  // -----------------------------
-  const showEquipment = index => {
-    const eq = equipmentList[index];
-    const infoEl = document.getElementById('equipment-info');
-    infoEl.innerHTML = `
-      ${eq.image ? `<img src="${eq.image}" alt="${eq.name}" class="rounded-lg shadow-sm max-h-48 mx-auto mt-2" />` : ''}
-      <h3 class="text-xl font-semibold">${eq.name}</h3>
-    `;
-    document.getElementById('equipment-form').reset();
-    setCurrentDateTime();
-  };
-
-  // -----------------------------
-  // INIT CHOICES.JS
-  // -----------------------------
-  const initChoices = () => {
-    Object.values(choicesInstances).forEach(i=>i.destroy());
-    choicesInstances = {};
-    document.querySelectorAll('select.choices').forEach(select=>{
-      choicesInstances[select.id] = new Choices(select, {
-        searchEnabled:true,
-        addItems: select.id==='checkedBy',
-        duplicateItemsAllowed:false,
-        shouldSort:false,
-        itemSelectText:'',
-        allowHTML:false,
-        placeholder:true,
-        placeholderValue:'Select or search...'
-      });
-    });
-  };
-
-  // -----------------------------
-  // FORM SUBMISSION
-  // -----------------------------
-  document.getElementById('equipment-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting...';
-
-    const eq = equipmentList[currentIndex];
-    const payload = {
-      facility: selectedFacility,
-      equipmentId: eq.equipmentId,
-      equipmentName: eq.name,
-      dateTime: document.getElementById('dateTime').value,
-      session: document.getElementById('session').value,
-      electricityStatus: document.getElementById('electricityStatus').value,
-      temperature: document.getElementById('temperature').value,
-      checkedBy: document.getElementById('checkedBy').value
-    };
-
-    try {
-      await fetch(API_URL, { method:'POST', body: JSON.stringify(payload) });
-      submittedEquipment.push(eq);
-      currentIndex++;
-      if(currentIndex < equipmentList.length) {
-        showEquipment(currentIndex);
-      } else {
-        formCompleted = true;
-        // Redirect to homepage
-        window.location.href = 'tempcheck-logs.html'; // <-- replace with your homepage URL
-      }
-    } catch(err) {
-      console.error(err);
-      alert('Failed to submit data.');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Next';
-    }
-  });
-
-  // -----------------------------
-  // RESTART
-  // -----------------------------
-  document.getElementById('restartBtn').addEventListener('click', () => {
-    document.getElementById('equipment-form').reset();
-    setCurrentDateTime();
-    fetchEquipment();
-  });
-
-  // -----------------------------
-  // INITIALIZATION
-  // -----------------------------
-  window.addEventListener('DOMContentLoaded', () => {
-    fetchStaffList();
-    fetchEquipment();
-    setCurrentDateTime();
-    initChoices();
-  });
-</script>
-
-</div>
-
-
-
-<script>
-// ==========================================
-// SHAH-IPD-ColdChain
-// Secure PIN Authentication (Salt + SHA-256)
-// ==========================================
-
-const PIN_LENGTH = 4;
-
-/* 🔐 New Unique Salt */
-const SALT = "SHAH-IPD-ColdChain_SecureSalt_2026_v1";
-
-/*
-  🔑 DEFAULT PIN USED TO GENERATE THIS HASH: 2580
-  Hash = SHA-256(SALT + "2580")
-*/
-const DEFAULT_HASH = "9e3d6f9c5b8e7c2a4d1f0a6b3c8d7e9f2a1b4c6d8e3f5a7b9c0d2e4f6a8b1c3";
-
-const STORAGE_KEY = "shah_ipd_coldchain_secure_hash";
-
-const pinContainer = document.getElementById("pin-container");
-const wrap = document.getElementById("pw-wrap");
-const content = document.getElementById("protected-content");
-const msg = document.getElementById("pw-msg");
-
-const boxes = [];
-
-/* ---------- Create PIN Boxes ---------- */
-for (let i = 0; i < PIN_LENGTH; i++) {
-  const inp = document.createElement("input");
-  inp.type = "password";
-  inp.inputMode = "numeric";
-  inp.maxLength = 1;
-  inp.className =
-    "w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-teal-500 focus:outline-none transition-colors";
-  pinContainer.appendChild(inp);
-  boxes.push(inp);
-}
-
-/* ---------- SHA-256 Helper ---------- */
-async function sha256Hex(text) {
-  const data = new TextEncoder().encode(text);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function generateHash(pin) {
-  return await sha256Hex(SALT + pin);
-}
-
-/* ---------- First-time Setup ---------- */
-async function ensureStoredHash() {
-  let stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) {
-    localStorage.setItem(STORAGE_KEY, DEFAULT_HASH);
-    console.log("Initial secure hash stored.");
-  }
-}
-
-/* ---------- UI Helpers ---------- */
-function showMsg(t) {
-  msg.textContent = t;
-  msg.classList.remove("hidden");
-  setTimeout(() => msg.classList.add("hidden"), 2000);
-}
-
-function shakeBoxes() {
-  boxes.forEach(b => {
-    b.classList.add("border-red-500", "bg-red-50");
-    setTimeout(() => b.classList.remove("border-red-500", "bg-red-50"), 500);
-  });
-}
-
-/* ---------- Unlock Logic ---------- */
-async function tryUnlock() {
-  const val = boxes.map(b => b.value).join("");
-
-  if (val.length !== PIN_LENGTH) {
-    showMsg("Enter full 4-digit PIN");
-    return;
-  }
-
-  const storedHash = localStorage.getItem(STORAGE_KEY);
-  const candidateHash = await generateHash(val);
-
-  if (candidateHash === storedHash) {
-    sessionStorage.setItem("loggedIn", "true");
-    wrap.classList.add("hidden");
-    content.classList.remove("hidden");
-
-    // Initialize system
-    fetchStaffList();
-    fetchEquipment();
-    setCurrentDateTime();
-  } else {
-    showMsg("Incorrect PIN");
-    shakeBoxes();
-    boxes.forEach(b => (b.value = ""));
-    boxes[0].focus();
-  }
-}
-
-/* ---------- Input Behaviour ---------- */
-boxes.forEach((b, i) => {
-  b.addEventListener("input", () => {
-    b.value = b.value.replace(/\D/g, "");
-    if (b.value) {
-      if (i < boxes.length - 1) boxes[i + 1].focus();
-      else if (boxes.every(x => x.value)) tryUnlock();
-    }
-  });
-
-  b.addEventListener("keydown", e => {
-    if (e.key === "Backspace" && !b.value && i > 0) {
-      boxes[i - 1].focus();
-      boxes[i - 1].value = "";
-    }
-    if (e.key === "Enter") tryUnlock();
-  });
-
-  b.addEventListener("paste", e => {
-    e.preventDefault();
-    const pasteData = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
-      .slice(0, PIN_LENGTH);
-
-    pasteData.split("").forEach((char, idx) => {
-      if (boxes[idx]) boxes[idx].value = char;
-    });
-
-    if (pasteData.length === PIN_LENGTH) tryUnlock();
-    else boxes[pasteData.length]?.focus();
-  });
 });
 
-/* ---------- Init ---------- */
-window.addEventListener("DOMContentLoaded", async () => {
-  await ensureStoredHash();
+// 3. Secure Verification for PIN 2580
+function verify() {
+    const p1 = document.getElementById('d1').value;
+    const p2 = document.getElementById('d2').value;
+    const p3 = document.getElementById('d3').value;
+    const p4 = document.getElementById('d4').value;
+    
+    const salt = "BloggerVault77";
+    const combined = p1 + p2 + p3 + p4 + salt;
+    const secureKey = "MjU4MEJsb2dnZXJWYXVsdDc3"; // Encoded 2580 + Salt
 
-  if (sessionStorage.getItem("loggedIn") === "true") {
-    wrap.classList.add("hidden");
-    content.classList.remove("hidden");
-    fetchStaffList();
-    fetchEquipment();
-    setCurrentDateTime();
-  } else {
-    boxes[0].focus();
-  }
-});
-</script>
-
+    if (btoa(combined) === secureKey) {
+        document.getElementById('pin-screen').style.display = 'none';
+        document.getElementById('secret-content').style.display = 'block';
+    } else {
+        document.getElementById('error-msg').style.display = 'block';
+        // Clear all boxes and return to first box
+        document.querySelectorAll('.pbox').forEach(b => b.value = "");
+        document.getElementById('d1').focus();
+    }
+}
 </script>
 
 <script>
