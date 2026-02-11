@@ -1,40 +1,473 @@
-const CACHE_NAME = "shah-ipd-coldchain-v1";
-const urlsToCache = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "https://cdn.tailwindcss.com",
-  "https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css",
-  "https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"
-];
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SHAH-IPD Coldchain Temperature Monitoring</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f766e">
 
-// Install
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-  );
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+</head>
+
+<body class="bg-slate-100">
+
+<!-- Wrapper -->
+<div class="flex justify-center pt-10 w-full px-4">
+
+  <!-- PIN Box -->
+  <div id="pw-wrap" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm text-center">
+    <h2 class="text-xl font-bold text-teal-800 mb-2">SHAH-IPD Coldchain Temperature Monitoring</h2>
+    <p class="text-gray-600 mb-6">Enter your 4-digit PIN</p>
+    <div id="pin-container" class="flex justify-center gap-2 mb-4"></div>
+    <p id="pw-msg" class="text-red-600 font-semibold hidden"></p>
+  </div>
+
+  <!-- Protected Content -->
+  <div id="protected-content" class="hidden bg-white p-6 rounded-xl shadow-lg w-full max-w-2xl mt-6">
+
+    <div class="flex justify-between mb-4">
+      <h3 class="text-teal-800 font-bold">Access Granted</h3>
+    </div>
+
+<div id="equipment-info" class="mb-4 text-center"></div>
+
+  <form id="equipment-form" class="space-y-4">
+
+    <div>
+      <label class="block font-medium">Date & Time of Check</label>
+      <input type="datetime-local" id="dateTime" required class="mt-1 w-full border rounded-lg p-2" max="">
+    </div>
+
+    <div>
+      <label class="block font-medium">Session</label>
+      <select id="session" required class="choices mt-1 w-full border rounded-lg p-2">
+        <option value="">Select...</option>
+        <option value="morning">Morning</option>
+        <option value="evening">Evening</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block font-medium">Electricity Status</label>
+      <select id="electricityStatus" required class="choices mt-1 w-full border rounded-lg p-2">
+        <option value="">Select...</option>
+        <option value="running">Running</option>
+        <option value="off">Off</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block font-medium">Temperature (°C)</label>
+      <input type="number" step="0.1" id="temperature" required class="mt-1 w-full border rounded-lg p-2">
+    </div>
+
+    <div>
+      <label class="block font-medium">Checked By</label>
+      <select id="checkedBy" required class="choices mt-1 w-full border rounded-lg p-2"></select>
+    </div>
+
+    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg shadow-md">
+      Next
+    </button>
+  </form>
+</div>
+
+<div id="done" class="hidden mt-6 text-center">
+  <h3 class="text-lg font-medium">All equipment processed!</h3>
+  <button id="restartBtn" class="mt-4 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">Restart</button>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-lg p-6 max-w-lg w-full shadow-lg">
+    <h3 class="text-xl font-semibold mb-4 text-center">Submitted Equipment</h3>
+    <div id="submittedEquipmentList" class="grid grid-cols-3 gap-4 max-h-64 overflow-auto mb-6"></div>
+    <div class="text-center">
+      <button id="confirmBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwltkQI_ljrd68ODKIMJrPca2cDEhTdtdDHZNm70i088yrnbXFGhoHt-LhNdcfNuxbVbg/exec';
+  const selectedFacility = 'SHAH-IPD'; // mapped to Sh. Komandoo HC
+
+  let equipmentList = [];
+  let currentIndex = 0;
+  let formCompleted = false;
+  let submittedEquipment = [];
+  let choicesInstances = {};
+
+  // -----------------------------
+  // UTILITY FUNCTIONS
+  // -----------------------------
+  const toggleVisibility = (id, show) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('hidden', !show);
+  };
+
+  const getMaldivesLocalDateTime = () => {
+    const offsetMinutes = 5 * 60;
+    const nowUtc = new Date();
+    const localTime = new Date(nowUtc.getTime() + offsetMinutes * 60000);
+    const pad = n => String(n).padStart(2, '0');
+    return `${localTime.getUTCFullYear()}-${pad(localTime.getUTCMonth()+1)}-${pad(localTime.getUTCDate())}T${pad(localTime.getUTCHours())}:${pad(localTime.getUTCMinutes())}`;
+  };
+
+  const setSessionBasedOnTime = dateTime => {
+    if (!dateTime) return;
+    const hour = parseInt(dateTime.split('T')[1].split(':')[0], 10);
+    const sessionSelect = document.getElementById('session');
+    sessionSelect.value = hour >=6 && hour <13 ? 'morning' :
+                          hour >=18 && hour <24 ? 'evening' : '';
+  };
+
+  const setCurrentDateTime = () => {
+    const dtInput = document.getElementById('dateTime');
+    const localTime = getMaldivesLocalDateTime();
+    dtInput.value = localTime;
+    dtInput.max = localTime;
+    setSessionBasedOnTime(localTime);
+  };
+
+  // -----------------------------
+  // FETCH STAFF LIST
+  // -----------------------------
+const fetchStaffList = async () => {
+  const STAFF_API_URL =
+    "https://script.google.com/macros/s/AKfycbyaBLAkJtS1lH0uJXZxmpLoHwb6kM51lQWyMuLlvDGXIdfovZhl8ag3MnMDL_aeq-oGmA/exec";
+
+  const staffSelect = document.getElementById("checkedBy");
+  staffSelect.innerHTML = "";
+
+  try {
+    // Only one needed (because facility is fixed)
+    const hcfName = "SHAH-IPD";
+
+    const res = await fetch(STAFF_API_URL);
+    const data = await res.json();
+
+    const filtered = data.filter(staff => staff.Hcf === hcfName);
+
+    if (filtered.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "no_staff";
+      opt.textContent = "No staff found. Please register manually.";
+      staffSelect.appendChild(opt);
+      initChoices();
+      return;
+    }
+
+    filtered.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item["Staff Name and Designation"];
+      opt.textContent = item["Staff Name and Designation"];
+      staffSelect.appendChild(opt);
+    });
+
+    const registerOpt = document.createElement("option");
+    registerOpt.value = "not_in_list";
+    registerOpt.textContent = "Not in list: Select to Register";
+    staffSelect.appendChild(registerOpt);
+
+    initChoices();
+
+    staffSelect.addEventListener("change", () => {
+      if (staffSelect.value === "not_in_list") {
+        const registerURL =
+          `https://shaviyanipublichealth.blogspot.com/p/register-new.html?hcf=${encodeURIComponent(selectedFacility)}`;
+
+        window.open(
+          registerURL,
+          "RegisterStaff",
+          "width=900,height=700,top=100,left=100,resizable=yes,scrollbars=yes"
+        );
+
+        staffSelect.choicesInstance?.setChoiceByValue("");
+      }
+    });
+
+  } catch (err) {
+    console.error("Failed to fetch staff", err);
+    alert("Could not load staff list");
+  }
+};
+
+  // -----------------------------
+  // FETCH EQUIPMENT LIST
+  // -----------------------------
+  const fetchEquipment = async () => {
+    try {
+      const res = await fetch(`${API_URL}?action=getEquipment&facility=${selectedFacility}`);
+      equipmentList = await res.json();
+      currentIndex = 0;
+      submittedEquipment = [];
+      if(equipmentList.length > 0) showEquipment(currentIndex);
+    } catch(err) {
+      console.error('Failed to fetch equipment', err);
+      alert('Could not load equipment list');
+    }
+  };
+
+  // -----------------------------
+  // DISPLAY CURRENT EQUIPMENT
+  // -----------------------------
+  const showEquipment = index => {
+    const eq = equipmentList[index];
+    const infoEl = document.getElementById('equipment-info');
+    infoEl.innerHTML = `
+      ${eq.image ? `<img src="${eq.image}" alt="${eq.name}" class="rounded-lg shadow-sm max-h-48 mx-auto mt-2" />` : ''}
+      <h3 class="text-xl font-semibold">${eq.name}</h3>
+    `;
+    document.getElementById('equipment-form').reset();
+    setCurrentDateTime();
+  };
+
+  // -----------------------------
+  // INIT CHOICES.JS
+  // -----------------------------
+  const initChoices = () => {
+    Object.values(choicesInstances).forEach(i=>i.destroy());
+    choicesInstances = {};
+    document.querySelectorAll('select.choices').forEach(select=>{
+      choicesInstances[select.id] = new Choices(select, {
+        searchEnabled:true,
+        addItems: select.id==='checkedBy',
+        duplicateItemsAllowed:false,
+        shouldSort:false,
+        itemSelectText:'',
+        allowHTML:false,
+        placeholder:true,
+        placeholderValue:'Select or search...'
+      });
+    });
+  };
+
+  // -----------------------------
+  // FORM SUBMISSION
+  // -----------------------------
+  document.getElementById('equipment-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    const eq = equipmentList[currentIndex];
+    const payload = {
+      facility: selectedFacility,
+      equipmentId: eq.equipmentId,
+      equipmentName: eq.name,
+      dateTime: document.getElementById('dateTime').value,
+      session: document.getElementById('session').value,
+      electricityStatus: document.getElementById('electricityStatus').value,
+      temperature: document.getElementById('temperature').value,
+      checkedBy: document.getElementById('checkedBy').value
+    };
+
+    try {
+      await fetch(API_URL, { method:'POST', body: JSON.stringify(payload) });
+      submittedEquipment.push(eq);
+      currentIndex++;
+      if(currentIndex < equipmentList.length) {
+        showEquipment(currentIndex);
+      } else {
+        formCompleted = true;
+        // Redirect to homepage
+        window.location.href = 'tempcheck-logs.html'; // <-- replace with your homepage URL
+      }
+    } catch(err) {
+      console.error(err);
+      alert('Failed to submit data.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Next';
+    }
+  });
+
+  // -----------------------------
+  // RESTART
+  // -----------------------------
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    document.getElementById('equipment-form').reset();
+    setCurrentDateTime();
+    fetchEquipment();
+  });
+
+  // -----------------------------
+  // INITIALIZATION
+  // -----------------------------
+  window.addEventListener('DOMContentLoaded', () => {
+    fetchStaffList();
+    fetchEquipment();
+    setCurrentDateTime();
+    initChoices();
+  });
+</script>
+
+</div>
+
+
+
+<script>
+// ==========================================
+// PIN AUTHENTICATION WITH SALT + SHA-256
+// ==========================================
+
+const PIN_LENGTH = 4;
+const SALT = "shah_ipd_2024_secure_salt"; // Change this to your unique salt
+
+// Pre-computed hash of SALT + DEFAULT_PIN
+// Generate this once with: await sha256Hex(SALT + DEFAULT_PIN)
+const DEFAULT_HASH = "476ea839f114f3fbcb8bc284753d2b9c4661e557e5025e9808fbb30a0e85c9f4"; // Example hash
+
+const pinContainer = document.getElementById("pin-container");
+const wrap = document.getElementById("pw-wrap");
+const content = document.getElementById("protected-content");
+const msg = document.getElementById("pw-msg");
+const STORAGE_KEY = "shah_ipd_hash_salt";
+
+const boxes = [];
+
+/* ---------- Create PIN Boxes ---------- */
+for(let i=0;i<PIN_LENGTH;i++){
+  const inp = document.createElement("input");
+  inp.type = "password";
+  inp.inputMode = "numeric";
+  inp.maxLength = 1;
+  inp.className = "w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-teal-500 focus:outline-none transition-colors";
+  pinContainer.appendChild(inp);
+  boxes.push(inp);
+}
+
+/* ---------- SHA-256 Helper with Salt ---------- */
+async function sha256Hex(text){
+  const data = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+/* ---------- Generate Hash (Salt + PIN) ---------- */
+async function generateHash(pin){
+  return await sha256Hex(SALT + pin);
+}
+
+/* ---------- First-time Setup ---------- */
+async function ensureStoredHash(){
+  let stored = localStorage.getItem(STORAGE_KEY);
+  if(!stored){
+    // First run: compute hash of default PIN and store it
+    const hash = await generateHash(DEFAULT_PIN);
+    localStorage.setItem(STORAGE_KEY, hash);
+    console.log("Initial hash stored:", hash);
+  }
+}
+
+/* ---------- UI Helpers ---------- */
+function showMsg(t){
+  msg.textContent = t;
+  msg.classList.remove("hidden");
+  setTimeout(()=>msg.classList.add("hidden"),2000);
+}
+
+function shakeBoxes(){
+  boxes.forEach(b=>{
+    b.classList.add("border-red-500", "bg-red-50");
+    setTimeout(()=>b.classList.remove("border-red-500", "bg-red-50"),500);
+  });
+}
+
+/* ---------- Unlock Logic ---------- */
+async function tryUnlock(){
+  const val = boxes.map(b=>b.value).join("");
+
+  if(val.length !== PIN_LENGTH){
+    showMsg("Enter full 4-digit PIN");
+    return;
+  }
+
+  const storedHash = localStorage.getItem(STORAGE_KEY);
+  const candidateHash = await generateHash(val);
+
+  if(candidateHash === storedHash){
+    // Success
+    sessionStorage.setItem("loggedIn","true");
+    wrap.classList.add("hidden");
+    content.classList.remove("hidden");
+    
+    // Initialize form data
+    fetchStaffList();
+    fetchEquipment();
+    setCurrentDateTime();
+  } else {
+    // Failed
+    showMsg("Incorrect PIN");
+    shakeBoxes();
+    boxes.forEach(b=>b.value="");
+    boxes[0].focus();
+  }
+}
+
+/* ---------- Input Behaviour ---------- */
+boxes.forEach((b,i)=>{
+  b.addEventListener("input",(e)=>{
+    // Only allow digits
+    b.value = b.value.replace(/\D/g,"");
+    
+    if(b.value){
+      // Move to next box
+      if(i < boxes.length-1) boxes[i+1].focus();
+      else if(boxes.every(x=>x.value)) tryUnlock();
+    }
+  });
+
+  b.addEventListener("keydown",(e)=>{
+    if(e.key==="Backspace" && !b.value && i>0){
+      boxes[i-1].focus();
+      boxes[i-1].value = "";
+    }
+    if(e.key==="Enter") tryUnlock();
+  });
+  
+  // Handle paste of full PIN
+  b.addEventListener("paste",(e)=>{
+    e.preventDefault();
+    const pasteData = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,PIN_LENGTH);
+    
+    pasteData.split('').forEach((char,idx)=>{
+      if(boxes[idx]) boxes[idx].value = char;
+    });
+    
+    if(pasteData.length === PIN_LENGTH){
+      tryUnlock();
+    } else if(pasteData.length < PIN_LENGTH){
+      boxes[pasteData.length].focus();
+    }
+  });
 });
 
-// Activate
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(name => {
-          if (name !== CACHE_NAME) {
-            return caches.delete(name);
-          }
-        })
-      );
-    })
-  );
-});
+/* ---------- Init ---------- */
+window.addEventListener("DOMContentLoaded", async ()=>{
+  await ensureStoredHash();
 
-// Fetch
-self.addEventListener("fetch", event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
-  );
+  if(sessionStorage.getItem("loggedIn")==="true"){
+    wrap.classList.add("hidden");
+    content.classList.remove("hidden");
+    fetchStaffList();
+    fetchEquipment();
+    setCurrentDateTime();
+  } else {
+    boxes[0].focus();
+  }
 });
+</script>
+
+</body>
+</html>
+
+
+convert this as WPA
